@@ -2,7 +2,45 @@ package main
 
 import (
 	"fmt"
+	"log"
+	"net"
+	"net/http"
+	"net/rpc"
 )
+
+func main() {
+	var api = new(API)
+	err := rpc.Register(api)
+	if err != nil {
+		log.Fatal("Error Registering API", err)
+	}
+
+	rpc.HandleHTTP()
+	listener, err := net.Listen("tcp", ":4040")
+	if err != nil {
+		log.Fatal("listen error: ", err)
+	}
+
+	log.Printf("serving rpc on port %d", 4040)
+	err = http.Serve(listener, nil)
+	if err != nil {
+		log.Fatal("Error Serving: ", err)
+	}
+
+	/*fmt.Println("Current Database: ", db)
+
+	var deleted = DeleteCard(avacyn)
+	fmt.Println("Deleted Card: ", deleted)
+	fmt.Println("Updated Database: ", db)
+
+	updated_bigblob := Card{"Big Blob", "Black", "Uncommon", "Phyrex", [2]uint8{5, 5}, [6]uint8{0, 0, 2, 0, 0, 2}, 10.00, 1}
+
+	var changed = EditCard(bigblob, updated_bigblob)
+	fmt.Println("Updated Card: ", changed)
+	fmt.Println("Updated Database: ", db)*/
+}
+
+type API int
 
 // This defines the card struct, a representation of a Magic the Gathering card which will be stored in our database.
 // The information stored in the struct are as followed: Color, Cost, Rarity, and stock (how much I personally own)
@@ -32,35 +70,52 @@ var db []Card
 		ETC.
 */
 
-func GetByName(name string) Card {
+func (a *API) GetDB(name string, reply *[]Card) error {
+	*reply = db
+	return nil
+}
+
+func (a *API) GetByName(name string, reply *Card) error {
 	var GetItem Card
 
+	// TODO: POSSIBLY NEED TO ADD IN FUNCTIONALITY FOR DUPLICATES (FOILS, REPRINTS, ETC) BUT OK FOR NOW
 	for _, val := range db {
 		if val.Name == name {
 			GetItem = val
 		}
 	}
-	return GetItem
+
+	*reply = GetItem
+
+	// TODO: ADD IN ERROR HANDLING
+	return nil
 }
 
-func AddCard(card Card) Card {
+func (a *API) AddCard(card Card, reply *Card) error {
 	db = append(db, card)
-	return card
+	fmt.Println(db)
+	fmt.Println(card)
+	*reply = card
+	// TODO: ADD IN ERROR HANDLING
+	return nil
 }
 
-func EditCard(card Card, edit Card) Card {
+func (a *API) EditCard(edit Card, reply *Card) error {
 	var changed Card
 
 	for idx, val := range db {
-		if val.Name == card.Name && val.Set == card.Set {
+		if val.Name == edit.Name && val.Set == edit.Set {
 			db[idx] = edit
 			changed = edit
 		}
 	}
-	return changed
+	*reply = changed
+
+	// TODO: ADD IN ERROR HANDLING
+	return nil
 }
 
-func DeleteCard(card Card) Card {
+func (a *API) DeleteCard(card Card, reply *Card) error {
 	var Del Card
 
 	for idx, val := range db {
@@ -70,29 +125,7 @@ func DeleteCard(card Card) Card {
 			break
 		}
 	}
-	return Del
-}
-
-func main() {
-	avacyn := Card{"Avacyn, Angel of Hope", "White", "Mythic", "Avacyn Restored", [2]uint8{8, 8}, [6]uint8{3, 0, 0, 0, 0, 5}, 54.54, 1}
-	bigblob := Card{"Big Blob", "Black", "Uncommon", "Phyrex", [2]uint8{3, 3}, [6]uint8{0, 0, 2, 0, 0, 2}, 5.00, 1}
-	crazedgorilla := Card{"Crazed Gorilla", "Green", "Common", "blahblah", [2]uint8{6, 5}, [6]uint8{5, 0, 0, 3, 0, 0}, 0.45, 1}
-	monsterhunter := Card{"Monster Hunter", "Red", "Mythic", "foofoobarbar", [2]uint8{4, 2}, [6]uint8{1, 0, 0, 0, 2, 1}, 6.74, 1}
-
-	AddCard(avacyn)
-	AddCard(bigblob)
-	AddCard(crazedgorilla)
-	AddCard(monsterhunter)
-
-	fmt.Println("Current Database: ", db)
-
-	var deleted = DeleteCard(avacyn)
-	fmt.Println("Deleted Card: ", deleted)
-	fmt.Println("Updated Database: ", db)
-
-	updated_bigblob := Card{"Big Blob", "Black", "Uncommon", "Phyrex", [2]uint8{5, 5}, [6]uint8{0, 0, 2, 0, 0, 2}, 10.00, 1}
-
-	var changed = EditCard(bigblob, updated_bigblob)
-	fmt.Println("Updated Card: ", changed)
-	fmt.Println("Updated Database: ", db)
+	*reply = Del
+	// TODO: ADD IN ERROR HANDLING
+	return nil
 }
